@@ -34,15 +34,15 @@ const ERC20Balances = () => {
   const { data } = useSession();
   const { chain } = useNetwork();
 
-  const [selectedChains, setSelectedChains] = useState([
+  const availableChains = [
     { chainName: 'Ethereum', chainId: 5 },
     { chainName: 'Polygon', chainId: 80001 },
     { chainName: 'Avalanche', chainId: 43114 },
-  ]);
+  ];
 
   const [queriedChain, setQueriedChain] = useState({ chainName: '', chainId: chain?.id });
-  const [destChain, setDestChain] = useState(0);
-  const [receiverAddrs, setReceiverAddrs] = useState([]);
+  const [selectedDestChain, setSelectedDestChain] = useState(0);
+  const [receiverAddrs, setReceiverAddrs] = useState<string[]>([]);
   const [selectedToken, setSelectedToken] = useState({ tokenSymbol: '', tokenAddr: '', transferAmount: 0 });
 
   const { data: tokenBalances } = useEvmWalletTokenBalances({
@@ -54,14 +54,20 @@ const ERC20Balances = () => {
     if (chain) setQueriedChain({ ...queriedChain, chainName: chain.name });
   }, [chain]);
 
+  const updateReceiverAddrs = (index: number, value: string) => {
+    const updatedList = [...receiverAddrs];
+    updatedList[index] = value;
+    setReceiverAddrs(updatedList);
+  };
+
   const contractAddr = '';
 
   const { config } = usePrepareContractWrite({
     address: contractAddr,
     abi: abi,
-    chainId: destChain,
+    chainId: selectedDestChain,
     functionName: 'sendToMany(string,string,address[],string,uint256)',
-    args: [destChain, contractAddr, receiverAddrs, selectedToken.tokenSymbol, selectedToken.transferAmount],
+    args: [selectedDestChain, contractAddr, receiverAddrs, selectedToken.tokenSymbol, selectedToken.transferAmount],
   });
 
   const { write } = useContractWrite(config);
@@ -78,7 +84,7 @@ const ERC20Balances = () => {
               {queriedChain?.chainName}
             </MenuButton>
             <MenuList>
-              {selectedChains.map((chain) => (
+              {availableChains.map((chain) => (
                 <MenuItem
                   key={chain.chainId}
                   onClick={() => setQueriedChain({ chainName: chain.chainName, chainId: chain.chainId })}
@@ -127,14 +133,23 @@ const ERC20Balances = () => {
                                 Select chain
                               </MenuButton>
                               <MenuList>
-                                <MenuItem onClick={() => setDestChain(5)}>Ethereum</MenuItem>
-                                <MenuItem onClick={() => setDestChain(43114)}>Avalanche</MenuItem>
-                                <MenuItem onClick={() => setDestChain(80001)}>Polygon</MenuItem>
+                                {availableChains.map((chain) =>
+                                  queriedChain.chainId !== chain.chainId ? (
+                                    <MenuItem key={chain.chainId} onClick={() => setSelectedDestChain(chain.chainId)}>
+                                      {chain.chainName}
+                                    </MenuItem>
+                                  ) : null,
+                                )}
                               </MenuList>
                             </>
                           )}
                         </Menu>
-                        <Input placeholder="Receiving Addresses" size="sm" />
+                        <Input
+                          placeholder="Receiving Addresses"
+                          size="sm"
+                          value={receiverAddrs[key] || ''}
+                          onChange={(e) => updateReceiverAddrs(key, e.target.value)}
+                        />
                         <Button onClick={() => write?.()}>Transfer</Button>
                       </VStack>
                     </Td>
