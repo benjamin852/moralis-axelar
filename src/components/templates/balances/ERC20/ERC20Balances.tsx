@@ -14,29 +14,54 @@ import {
   Avatar,
   HStack,
   useColorModeValue,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  Button,
 } from '@chakra-ui/react';
+import { ChevronDownIcon } from '@chakra-ui/icons';
 import { useEvmWalletTokenBalances } from '@moralisweb3/next';
 import { useSession } from 'next-auth/react';
-import { useEffect } from 'react';
 import { getEllipsisTxt } from 'utils/format';
 import { useNetwork } from 'wagmi';
+import { useState, useEffect } from 'react';
 
 const ERC20Balances = () => {
   const hoverTrColor = useColorModeValue('gray.100', 'gray.700');
   const { data } = useSession();
   const { chain } = useNetwork();
+  const [queriedChain, setQueriedChain] = useState({ chainName: '', chainId: chain?.id });
+
   const { data: tokenBalances } = useEvmWalletTokenBalances({
     address: data?.user?.address,
-    chain: chain?.id,
+    chain: queriedChain.chainId,
   });
 
-  useEffect(() => console.log('tokenBalances: ', tokenBalances), [tokenBalances]);
+  useEffect(() => {
+    if (chain) setQueriedChain({ ...queriedChain, chainName: chain.name });
+  }, [chain]);
 
   return (
     <>
       <Heading size="lg" marginBottom={6}>
         ERC20 Balances
       </Heading>
+      <Menu>
+        {({ isOpen }) => (
+          <>
+            <MenuButton isActive={isOpen} as={Button} rightIcon={<ChevronDownIcon />}>
+              {queriedChain?.chainName}
+            </MenuButton>
+            <MenuList>
+              <MenuItem onClick={() => setQueriedChain({ chainName: 'Ethereum', chainId: 5 })}>Ethereum</MenuItem>
+              {/* fix avalanche */}
+              <MenuItem onClick={() => setQueriedChain({ chainName: 'Avalanche', chainId: 43113 })}>Avalanche</MenuItem>
+              <MenuItem onClick={() => setQueriedChain({ chainName: 'Polygon', chainId: 80001 })}>Polygon</MenuItem>
+            </MenuList>
+          </>
+        )}
+      </Menu>
       {tokenBalances?.length ? (
         <Box border="2px" borderColor={hoverTrColor} borderRadius="xl" padding="24px 18px">
           <TableContainer w={'full'}>
@@ -46,6 +71,7 @@ const ERC20Balances = () => {
                   <Th>Token</Th>
                   <Th>Value</Th>
                   <Th isNumeric>Address</Th>
+                  <Th>Transfer To</Th>
                 </Tr>
               </Thead>
               <Tbody>
@@ -64,6 +90,12 @@ const ERC20Balances = () => {
                     </Td>
                     <Td>{value}</Td>
                     <Td isNumeric>{getEllipsisTxt(token?.contractAddress.checksum)}</Td>
+                    <Td>
+                      <VStack>
+                        <Text as={'span'}>Belz</Text>
+                        <Text as={'span'}>Petruska</Text>
+                      </VStack>
+                    </Td>
                   </Tr>
                 ))}
               </Tbody>
@@ -72,6 +104,7 @@ const ERC20Balances = () => {
                   <Th>Token</Th>
                   <Th>Value</Th>
                   <Th isNumeric>Address</Th>
+                  <Th>Transfer To</Th>
                 </Tr>
               </Tfoot>
             </Table>

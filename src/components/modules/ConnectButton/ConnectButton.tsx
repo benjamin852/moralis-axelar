@@ -21,12 +21,12 @@ const ConnectButton = () => {
     try {
       const { account, chain } = await connectAsync();
 
+      console.log(process.env.MORALIS_API_KEY, 'env');
       const challenge = await requestChallengeAsync({ address: account, chainId: chain.id });
 
       if (!challenge) {
         throw new Error('No challenge received');
       }
-
       const signature = await signMessageAsync({ message: challenge.message });
 
       await signIn('moralis-auth', { message: challenge.message, signature, network: 'Evm', redirect: false });
