@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import {
   TableContainer,
   Table,
@@ -19,19 +20,24 @@ import {
   MenuList,
   MenuItem,
   Button,
+  Input,
 } from '@chakra-ui/react';
 import { ChevronDownIcon } from '@chakra-ui/icons';
 import { useEvmWalletTokenBalances } from '@moralisweb3/next';
 import { useSession } from 'next-auth/react';
 import { getEllipsisTxt } from 'utils/format';
-import { useNetwork } from 'wagmi';
-import { useState, useEffect } from 'react';
+import { useNetwork, usePrepareContractWrite, useContractWrite } from 'wagmi';
+import abi from '../../../../../contract/abi.json';
 
 const ERC20Balances = () => {
   const hoverTrColor = useColorModeValue('gray.100', 'gray.700');
   const { data } = useSession();
   const { chain } = useNetwork();
+
   const [queriedChain, setQueriedChain] = useState({ chainName: '', chainId: chain?.id });
+  const [destChain, setDestChain] = useState(0);
+  const [receiverAddrs, setReceiverAddrs] = useState([]);
+  const [selectedToken, setSelectedToken] = useState({ tokenSymbol: '', tokenAddr: '', transferAmount: 0 });
 
   const { data: tokenBalances } = useEvmWalletTokenBalances({
     address: data?.user?.address,
@@ -41,6 +47,18 @@ const ERC20Balances = () => {
   useEffect(() => {
     if (chain) setQueriedChain({ ...queriedChain, chainName: chain.name });
   }, [chain]);
+
+  const contractAddr = '';
+
+  const { config } = usePrepareContractWrite({
+    address: contractAddr,
+    abi: abi,
+    chainId: destChain,
+    functionName: 'sendToMany(string,string,address[],string,uint256)',
+    args: [destChain, contractAddr, receiverAddrs, selectedToken.tokenSymbol, selectedToken.transferAmount],
+  });
+
+  const { write } = useContractWrite(config);
 
   return (
     <>
@@ -55,8 +73,7 @@ const ERC20Balances = () => {
             </MenuButton>
             <MenuList>
               <MenuItem onClick={() => setQueriedChain({ chainName: 'Ethereum', chainId: 5 })}>Ethereum</MenuItem>
-              {/* fix avalanche */}
-              <MenuItem onClick={() => setQueriedChain({ chainName: 'Avalanche', chainId: 43113 })}>Avalanche</MenuItem>
+              <MenuItem onClick={() => setQueriedChain({ chainName: 'Avalanche', chainId: 43114 })}>Avalanche</MenuItem>
               <MenuItem onClick={() => setQueriedChain({ chainName: 'Polygon', chainId: 80001 })}>Polygon</MenuItem>
             </MenuList>
           </>
@@ -71,7 +88,7 @@ const ERC20Balances = () => {
                   <Th>Token</Th>
                   <Th>Value</Th>
                   <Th isNumeric>Address</Th>
-                  <Th>Transfer To</Th>
+                  <Th textAlign="center">Transfer To</Th>
                 </Tr>
               </Thead>
               <Tbody>
@@ -92,8 +109,22 @@ const ERC20Balances = () => {
                     <Td isNumeric>{getEllipsisTxt(token?.contractAddress.checksum)}</Td>
                     <Td>
                       <VStack>
-                        <Text as={'span'}>Belz</Text>
-                        <Text as={'span'}>Petruska</Text>
+                        <Menu>
+                          {({ isOpen }) => (
+                            <>
+                              <MenuButton isActive={isOpen} as={Button} size="s" rightIcon={<ChevronDownIcon />}>
+                                Select chain
+                              </MenuButton>
+                              <MenuList>
+                                <MenuItem onClick={() => setDestChain(5)}>Ethereum</MenuItem>
+                                <MenuItem onClick={() => setDestChain(43114)}>Avalanche</MenuItem>
+                                <MenuItem onClick={() => setDestChain(80001)}>Polygon</MenuItem>
+                              </MenuList>
+                            </>
+                          )}
+                        </Menu>
+                        <Input placeholder="Receiving Addresses" size="sm" />
+                        <Button onClick={() => write?.()}>Transfer</Button>
                       </VStack>
                     </Td>
                   </Tr>
