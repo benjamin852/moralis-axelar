@@ -34,6 +34,12 @@ const ERC20Balances = () => {
   const { data } = useSession();
   const { chain } = useNetwork();
 
+  const [selectedChains, setSelectedChains] = useState([
+    { chainName: 'Ethereum', chainId: 5 },
+    { chainName: 'Polygon', chainId: 80001 },
+    { chainName: 'Avalanche', chainId: 43114 },
+  ]);
+
   const [queriedChain, setQueriedChain] = useState({ chainName: '', chainId: chain?.id });
   const [destChain, setDestChain] = useState(0);
   const [receiverAddrs, setReceiverAddrs] = useState([]);
@@ -72,9 +78,14 @@ const ERC20Balances = () => {
               {queriedChain?.chainName}
             </MenuButton>
             <MenuList>
-              <MenuItem onClick={() => setQueriedChain({ chainName: 'Ethereum', chainId: 5 })}>Ethereum</MenuItem>
-              <MenuItem onClick={() => setQueriedChain({ chainName: 'Avalanche', chainId: 43114 })}>Avalanche</MenuItem>
-              <MenuItem onClick={() => setQueriedChain({ chainName: 'Polygon', chainId: 80001 })}>Polygon</MenuItem>
+              {selectedChains.map((chain) => (
+                <MenuItem
+                  key={chain.chainId}
+                  onClick={() => setQueriedChain({ chainName: chain.chainName, chainId: chain.chainId })}
+                >
+                  {chain.chainName}
+                </MenuItem>
+              ))}
             </MenuList>
           </>
         )}
