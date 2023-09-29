@@ -35,6 +35,12 @@ const ERC20Balances = () => {
     chainId: number;
   }
 
+  interface SelectedToken {
+    tokenSymbol: string;
+    tokenAddr: string;
+    transferAmount: number;
+  }
+
   const hoverTrColor = useColorModeValue('gray.100', 'gray.700');
   const { data } = useSession();
   const { chain } = useNetwork();
@@ -48,7 +54,7 @@ const ERC20Balances = () => {
   const [queriedChain, setQueriedChain] = useState({ chainName: '', chainId: chain?.id });
   const [selectedDestChain, setSelectedDestChain] = useState<DestChain[]>([]);
   const [receiverAddrs, setReceiverAddrs] = useState<string[]>([]);
-  const [selectedToken, setSelectedToken] = useState({ tokenSymbol: '', tokenAddr: '', transferAmount: 0 });
+  const [selectedToken, setSelectedToken] = useState<SelectedToken[]>([]);
 
   const { data: tokenBalances } = useEvmWalletTokenBalances({
     address: data?.user?.address,
@@ -72,6 +78,13 @@ const ERC20Balances = () => {
     setReceiverAddrs(updatedList);
   };
 
+  const updateTransferAmount = (index: number, tokenSymbol: string, tokenAddr: string, transferAmount: number) => {
+    const updatedList = [...selectedToken];
+    console.log(transferAmount, 'amount');
+    updatedList[index] = { tokenSymbol, tokenAddr, transferAmount };
+    setSelectedToken(updatedList);
+  };
+
   const updateDestChain = (index: number, chainName: string, chainId: number) => {
     const updatedList = [...selectedDestChain];
     updatedList[index] = { chainName, chainId };
@@ -85,7 +98,13 @@ const ERC20Balances = () => {
     abi: abi,
     chainId: selectedDestChain[0]?.chainId,
     functionName: 'sendToMany(string,string,address[],string,uint256)',
-    args: [selectedDestChain, contractAddr, receiverAddrs, selectedToken.tokenSymbol, selectedToken.transferAmount],
+    args: [
+      selectedDestChain,
+      contractAddr,
+      receiverAddrs,
+      selectedToken[0]?.tokenSymbol,
+      selectedToken[0]?.transferAmount,
+    ],
   });
 
   const { write } = useContractWrite(config);
@@ -171,10 +190,26 @@ const ERC20Balances = () => {
                           )}
                         </Menu>
                         <Input
-                          placeholder="Receiving Addresses"
+                          placeholder="Receiving Address(es)"
                           size="sm"
                           value={receiverAddrs[key] || ''}
                           onChange={(e) => updateReceiverAddrs(key, e.target.value)}
+                        />
+                        <Input
+                          placeholder="Transfer Amount"
+                          size="sm"
+                          value={selectedToken[key]?.transferAmount || ''}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (key !== undefined && token?.symbol && token?.contractAddress) {
+                              updateTransferAmount(
+                                key,
+                                token.symbol,
+                                token.contractAddress.checksum,
+                                parseFloat(value),
+                              );
+                            }
+                          }}
                         />
                         <Button onClick={() => write?.()}>Transfer</Button>
                       </VStack>
