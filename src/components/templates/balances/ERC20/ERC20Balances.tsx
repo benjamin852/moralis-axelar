@@ -47,7 +47,6 @@ const ERC20Balances = () => {
 
   const [queriedChain, setQueriedChain] = useState({ chainName: '', chainId: chain?.id });
   const [selectedDestChain, setSelectedDestChain] = useState<DestChain[]>([]);
-  // const [selectedDestChain, setSelectedDestChain] = useState([{ chainName: '', chainId: chain?.id }]);
   const [receiverAddrs, setReceiverAddrs] = useState<string[]>([]);
   const [selectedToken, setSelectedToken] = useState({ tokenSymbol: '', tokenAddr: '', transferAmount: 0 });
 
@@ -59,7 +58,7 @@ const ERC20Balances = () => {
   useEffect(() => {
     if (tokenBalances) {
       setReceiverAddrs(new Array(tokenBalances.length).fill(''));
-      setSelectedDestChain(new Array(tokenBalances.length).fill({ chainName: '', chainId: chain?.id }));
+      setSelectedDestChain(new Array(tokenBalances.length).fill({ chainName: '', chainId: 0 }));
     }
   }, [tokenBalances]);
 
@@ -149,10 +148,12 @@ const ERC20Balances = () => {
                           {({ isOpen }) => (
                             <>
                               <MenuButton isActive={isOpen} as={Button} size="s" rightIcon={<ChevronDownIcon />}>
-                                {/* Select chain */}
-                                {selectedDestChain[key]?.chainName}
+                                {selectedDestChain[key]?.chainName == ''
+                                  ? 'Select Chain'
+                                  : selectedDestChain[key]?.chainName}
                               </MenuButton>
                               <MenuList>
+                                <MenuItem onClick={() => updateDestChain(key, '', 0)}>Clear</MenuItem>
                                 {availableChains.map((availableChain) =>
                                   availableChain.chainId !== chain?.id ? (
                                     <MenuItem
