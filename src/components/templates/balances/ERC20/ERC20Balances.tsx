@@ -30,6 +30,11 @@ import { useNetwork, usePrepareContractWrite, useContractWrite } from 'wagmi';
 import abi from '../../../../../contract/abi.json';
 
 const ERC20Balances = () => {
+  interface DestChain {
+    chainName: string;
+    chainId: number;
+  }
+
   const hoverTrColor = useColorModeValue('gray.100', 'gray.700');
   const { data } = useSession();
   const { chain } = useNetwork();
@@ -41,7 +46,8 @@ const ERC20Balances = () => {
   ];
 
   const [queriedChain, setQueriedChain] = useState({ chainName: '', chainId: chain?.id });
-  const [selectedDestChain, setSelectedDestChain] = useState([{ chainName: '', chainId: chain?.id }]);
+  const [selectedDestChain, setSelectedDestChain] = useState<DestChain[]>([]);
+  // const [selectedDestChain, setSelectedDestChain] = useState([{ chainName: '', chainId: chain?.id }]);
   const [receiverAddrs, setReceiverAddrs] = useState<string[]>([]);
   const [selectedToken, setSelectedToken] = useState({ tokenSymbol: '', tokenAddr: '', transferAmount: 0 });
 
@@ -49,6 +55,13 @@ const ERC20Balances = () => {
     address: data?.user?.address,
     chain: queriedChain.chainId,
   });
+
+  useEffect(() => {
+    if (tokenBalances) {
+      setReceiverAddrs(new Array(tokenBalances.length).fill(''));
+      setSelectedDestChain(new Array(tokenBalances.length).fill({ chainName: '', chainId: chain?.id }));
+    }
+  }, [tokenBalances]);
 
   useEffect(() => {
     if (chain) setQueriedChain({ ...queriedChain, chainName: chain.name });
@@ -62,8 +75,7 @@ const ERC20Balances = () => {
 
   const updateDestChain = (index: number, chainName: string, chainId: number) => {
     const updatedList = [...selectedDestChain];
-    updatedList[index].chainName = chainName;
-    updatedList[index].chainId = chainId;
+    updatedList[index] = { chainName, chainId };
     setSelectedDestChain(updatedList);
   };
 
@@ -72,7 +84,7 @@ const ERC20Balances = () => {
   const { config } = usePrepareContractWrite({
     address: contractAddr,
     abi: abi,
-    chainId: selectedDestChain.chainId,
+    chainId: selectedDestChain[0]?.chainId,
     functionName: 'sendToMany(string,string,address[],string,uint256)',
     args: [selectedDestChain, contractAddr, receiverAddrs, selectedToken.tokenSymbol, selectedToken.transferAmount],
   });
