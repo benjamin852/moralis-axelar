@@ -41,7 +41,7 @@ const ERC20Balances = () => {
   ];
 
   const [queriedChain, setQueriedChain] = useState({ chainName: '', chainId: chain?.id });
-  const [selectedDestChain, setSelectedDestChain] = useState(0);
+  const [selectedDestChain, setSelectedDestChain] = useState([{ chainName: '', chainId: chain?.id }]);
   const [receiverAddrs, setReceiverAddrs] = useState<string[]>([]);
   const [selectedToken, setSelectedToken] = useState({ tokenSymbol: '', tokenAddr: '', transferAmount: 0 });
 
@@ -60,12 +60,19 @@ const ERC20Balances = () => {
     setReceiverAddrs(updatedList);
   };
 
+  const updateDestChain = (index: number, chainName: string, chainId: number) => {
+    const updatedList = [...selectedDestChain];
+    updatedList[index].chainName = chainName;
+    updatedList[index].chainId = chainId;
+    setSelectedDestChain(updatedList);
+  };
+
   const contractAddr = '';
 
   const { config } = usePrepareContractWrite({
     address: contractAddr,
     abi: abi,
-    chainId: selectedDestChain,
+    chainId: selectedDestChain.chainId,
     functionName: 'sendToMany(string,string,address[],string,uint256)',
     args: [selectedDestChain, contractAddr, receiverAddrs, selectedToken.tokenSymbol, selectedToken.transferAmount],
   });
@@ -130,13 +137,19 @@ const ERC20Balances = () => {
                           {({ isOpen }) => (
                             <>
                               <MenuButton isActive={isOpen} as={Button} size="s" rightIcon={<ChevronDownIcon />}>
-                                Select chain
+                                {/* Select chain */}
+                                {selectedDestChain[key]?.chainName}
                               </MenuButton>
                               <MenuList>
-                                {availableChains.map((chain) =>
-                                  queriedChain.chainId !== chain.chainId ? (
-                                    <MenuItem key={chain.chainId} onClick={() => setSelectedDestChain(chain.chainId)}>
-                                      {chain.chainName}
+                                {availableChains.map((availableChain) =>
+                                  availableChain.chainId !== chain?.id ? (
+                                    <MenuItem
+                                      key={availableChain.chainId}
+                                      onClick={() =>
+                                        updateDestChain(key, availableChain.chainName, availableChain.chainId)
+                                      }
+                                    >
+                                      {availableChain.chainName}
                                     </MenuItem>
                                   ) : null,
                                 )}
