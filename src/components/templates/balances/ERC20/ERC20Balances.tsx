@@ -26,8 +26,10 @@ import { ChevronDownIcon } from '@chakra-ui/icons';
 import { useEvmWalletTokenBalances } from '@moralisweb3/next';
 import { useSession } from 'next-auth/react';
 import { getEllipsisTxt } from 'utils/format';
-import { useNetwork, usePrepareContractWrite, useContractWrite } from 'wagmi';
+import { useNetwork, usePrepareContractWrite, useContractWrite, useWaitForTransaction } from 'wagmi';
 import abi from '../../../../../contract/abi.json';
+import { parseEther } from 'ethers/lib/utils.js';
+import { useDebounce } from 'use-debounce';
 
 const ERC20Balances = () => {
   interface DestChain {
@@ -42,7 +44,7 @@ const ERC20Balances = () => {
   }
 
   const hoverTrColor = useColorModeValue('gray.100', 'gray.700');
-  const { data } = useSession();
+  const { data: session } = useSession();
   const { chain } = useNetwork();
 
   const availableChains = [
@@ -56,8 +58,13 @@ const ERC20Balances = () => {
   const [receiverAddrs, setReceiverAddrs] = useState<string[]>([]);
   const [selectedToken, setSelectedToken] = useState<SelectedToken[]>([]);
 
+  const [submittedDestChain, setSubmittedDestChain] = useState<DestChain[]>([]);
+  const [submittedToken, setSubmittedToken] = useState<SelectedToken[]>([]);
+  const [submittedReceiverAddrs, setSubmittedReceiverAddrs] = useState<string[]>([]);
+  // const [submittedToken,/ setSubmitedToken] = useState<string[]>([]);
+
   const { data: tokenBalances } = useEvmWalletTokenBalances({
-    address: data?.user?.address,
+    address: session?.user?.address,
     chain: queriedChain.chainId,
   });
 
@@ -80,7 +87,6 @@ const ERC20Balances = () => {
 
   const updateTransferAmount = (index: number, tokenSymbol: string, tokenAddr: string, transferAmount: number) => {
     const updatedList = [...selectedToken];
-    console.log(transferAmount, 'amount');
     updatedList[index] = { tokenSymbol, tokenAddr, transferAmount };
     setSelectedToken(updatedList);
   };
@@ -91,23 +97,34 @@ const ERC20Balances = () => {
     setSelectedDestChain(updatedList);
   };
 
-  const contractAddr = '';
+  const parseForSubmission = () => {
+    setSubmittedDestChain(selectedDestChain.filter((item) => !(item.chainName === '' && item.chainId === 0)));
+    setSubmittedToken(selectedToken.filter((item) => !(item === undefined)));
+    setSubmittedReceiverAddrs(receiverAddrs.filter((item) => !(item === '')));
+  };
 
-  const { config } = usePrepareContractWrite({
-    address: contractAddr,
+  const { config, error } = usePrepareContractWrite({
+    // address: selectedToken[0]?.tokenAddr,
+    address: '0xB6DE251e07D116EeDaF3Bf68E805C72DA23B62cc',
     abi: abi,
-    chainId: selectedDestChain[0]?.chainId,
+    // chainId: selectedDestChain[0]?.chainId,
+    chainId: 80001,
     functionName: 'sendToMany(string,string,address[],string,uint256)',
     args: [
-      selectedDestChain,
-      contractAddr,
-      receiverAddrs,
-      selectedToken[0]?.tokenSymbol,
-      selectedToken[0]?.transferAmount,
+      submittedDestChain[0]?.chainName,
+      submittedToken[0]?.tokenAddr,
+      submittedReceiverAddrs,
+      submittedToken[0]?.tokenSymbol,
+      submittedToken[0]?.transferAmount,
     ],
+    enabled: true,
   });
 
-  const { write } = useContractWrite(config);
+  const { data, write } = useContractWrite(config);
+
+  const { isLoading, isSuccess } = useWaitForTransaction({
+    hash: data?.hash,
+  });
 
   return (
     <>
@@ -211,7 +228,17 @@ const ERC20Balances = () => {
                             }
                           }}
                         />
-                        <Button onClick={() => write?.()}>Transfer</Button>
+                        <Button
+                          disabled={!write}
+                          onClick={() => {
+                            parseForSubmission();
+                            write?.();
+                            console.log(isSuccess, 'isSuccess');
+                            console.log(error, 'error');
+                          }}
+                        >
+                          Transfer
+                        </Button>
                       </VStack>
                     </Td>
                   </Tr>
