@@ -61,7 +61,6 @@ const ERC20Balances = () => {
   const [submittedDestChain, setSubmittedDestChain] = useState<DestChain[]>([]);
   const [submittedToken, setSubmittedToken] = useState<SelectedToken[]>([]);
   const [submittedReceiverAddrs, setSubmittedReceiverAddrs] = useState<string[]>([]);
-  // const [submittedToken,/ setSubmitedToken] = useState<string[]>([]);
 
   const { data: tokenBalances } = useEvmWalletTokenBalances({
     address: session?.user?.address,
@@ -105,15 +104,12 @@ const ERC20Balances = () => {
 
   const addressAvalanche = '0x8057746C51Ce81e7271d61e289A17DA2bf5389cB';
   const { config } = usePrepareContractWrite({
-    // address: selectedToken[0]?.tokenAddr,
     address: '0xB6DE251e07D116EeDaF3Bf68E805C72DA23B62cc',
     abi: abi,
-    // chainId: selectedDestChain[0]?.chainId,
-    chainId: 80001,
+    chainId: selectedDestChain[0]?.chainId,
     functionName: 'sendToMany(string,string,address[],string,uint256)',
     args: [
       submittedDestChain[0]?.chainName,
-      // submittedToken[0]?.tokenAddr,
       addressAvalanche,
       submittedReceiverAddrs,
       submittedToken[0]?.tokenSymbol,
@@ -125,11 +121,7 @@ const ERC20Balances = () => {
     enabled: true,
   });
 
-  const { data, write, error } = useContractWrite(config);
-
-  const { isLoading, isSuccess } = useWaitForTransaction({
-    hash: data?.hash,
-  });
+  const { write } = useContractWrite(config);
 
   return (
     <>
@@ -238,8 +230,6 @@ const ERC20Balances = () => {
                           onClick={() => {
                             parseForSubmission();
                             write?.();
-                            console.log(isSuccess, 'isSuccess');
-                            console.log(error, 'error');
                           }}
                         >
                           Transfer
