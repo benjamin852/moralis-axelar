@@ -103,7 +103,8 @@ const ERC20Balances = () => {
     setSubmittedReceiverAddrs(receiverAddrs.filter((item) => !(item === '')));
   };
 
-  const { config, error } = usePrepareContractWrite({
+  const addressAvalanche = '0x8057746C51Ce81e7271d61e289A17DA2bf5389cB';
+  const { config } = usePrepareContractWrite({
     // address: selectedToken[0]?.tokenAddr,
     address: '0xB6DE251e07D116EeDaF3Bf68E805C72DA23B62cc',
     abi: abi,
@@ -112,15 +113,19 @@ const ERC20Balances = () => {
     functionName: 'sendToMany(string,string,address[],string,uint256)',
     args: [
       submittedDestChain[0]?.chainName,
-      submittedToken[0]?.tokenAddr,
+      // submittedToken[0]?.tokenAddr,
+      addressAvalanche,
       submittedReceiverAddrs,
       submittedToken[0]?.tokenSymbol,
       submittedToken[0]?.transferAmount,
     ],
+    overrides: {
+      value: parseEther('1'),
+    },
     enabled: true,
   });
 
-  const { data, write } = useContractWrite(config);
+  const { data, write, error } = useContractWrite(config);
 
   const { isLoading, isSuccess } = useWaitForTransaction({
     hash: data?.hash,
