@@ -65,7 +65,7 @@ const ERC20Balances = () => {
 
   const { data: tokenBalances } = useEvmWalletTokenBalances({
     address: session?.user?.address,
-    chain: 43114,
+    chain: chain?.id,
   });
 
   useEffect(() => {
@@ -88,18 +88,21 @@ const ERC20Balances = () => {
     const updatedList = [...receiverAddrs];
     updatedList[index] = value;
     setReceiverAddrs(updatedList);
+    parseForSubmission();
   };
 
   const updateTransferAmount = (index: number, tokenSymbol: string, tokenAddr: string, transferAmount: number) => {
     const updatedList = [...selectedToken];
     updatedList[index] = { tokenSymbol, tokenAddr, transferAmount };
     setSelectedToken(updatedList);
+    parseForSubmission();
   };
 
   const updateDestChain = (index: number, chainName: string, chainId: number, distributionContractAddr: string) => {
     const updatedList = [...selectedDestChain];
     updatedList[index] = { chainName, chainId, distributionContractAddr };
     setSelectedDestChain(updatedList);
+    parseForSubmission();
   };
 
   const parseForSubmission = () => {
@@ -235,13 +238,7 @@ const ERC20Balances = () => {
                             }
                           }}
                         />
-                        <Button
-                          disabled={!write}
-                          onClick={() => {
-                            parseForSubmission();
-                            write?.();
-                          }}
-                        >
+                        <Button disabled={!write} onClick={() => write?.()}>
                           Transfer
                         </Button>
                       </VStack>
