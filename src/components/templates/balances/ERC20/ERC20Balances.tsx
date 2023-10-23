@@ -49,7 +49,7 @@ const ERC20Balances = () => {
   const { chain } = useNetwork();
 
   const availableChains = [
-    { chainName: 'Ethereum', chainId: 5, distributionContractAddr: '0x1698f20D6597A48df6E4571a69C58eE741B29ed1' },
+    { chainName: 'ethereum-2', chainId: 5, distributionContractAddr: '0x1698f20D6597A48df6E4571a69C58eE741B29ed1' },
     { chainName: 'Polygon', chainId: 80001, distributionContractAddr: '0xB6DE251e07D116EeDaF3Bf68E805C72DA23B62cc' },
     { chainName: 'Avalanche', chainId: 43114, distributionContractAddr: '0x8057746C51Ce81e7271d61e289A17DA2bf5389cB' },
   ];
@@ -66,7 +66,7 @@ const ERC20Balances = () => {
 
   const { data: tokenBalances } = useEvmWalletTokenBalances({
     address: session?.user?.address,
-    chain: chain?.id,
+    chain: queriedChain.chainId == 0 ? chain?.id : queriedChain.chainId,
   });
 
   useEffect(() => {
