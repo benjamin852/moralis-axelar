@@ -51,7 +51,7 @@ const ERC20Balances = () => {
   const availableChains = [
     { chainName: 'ethereum-2', chainId: 5, distributionContractAddr: '0x1698f20D6597A48df6E4571a69C58eE741B29ed1' },
     { chainName: 'Polygon', chainId: 80001, distributionContractAddr: '0xB6DE251e07D116EeDaF3Bf68E805C72DA23B62cc' },
-    { chainName: 'Avalanche', chainId: 43114, distributionContractAddr: '0x8057746C51Ce81e7271d61e289A17DA2bf5389cB' },
+    { chainName: 'Avalanche', chainId: 43114, distributionContractAddr: '0x8057746C51Ce81e7271d61e289A17DA2bf5389cB' }, //AVALANCHE NOT SUPPORTED!
   ];
 
   const [queriedChain, setQueriedChain] = useState({ chainName: '', chainId: chain?.id });
@@ -68,6 +68,7 @@ const ERC20Balances = () => {
     address: session?.user?.address,
     chain: queriedChain.chainId == 0 ? chain?.id : queriedChain.chainId,
   });
+
 
   useEffect(() => {
     if (tokenBalances) {
