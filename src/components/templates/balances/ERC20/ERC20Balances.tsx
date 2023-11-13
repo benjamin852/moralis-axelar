@@ -26,9 +26,9 @@ import { ChevronDownIcon } from '@chakra-ui/icons';
 import { useEvmWalletTokenBalances } from '@moralisweb3/next';
 import { useSession } from 'next-auth/react';
 import { getEllipsisTxt } from 'utils/format';
-import { useNetwork /* usePrepareContractWrite, useContractWrite*/ } from 'wagmi';
-// import abi from '../../../../../contract/abi.json';
-// import { parseEther, parseUnits } from 'ethers/lib/utils.js';
+import { useNetwork, usePrepareContractWrite, useContractWrite } from 'wagmi';
+import abi from '../../../../../contract/abi.json';
+import { parseEther, parseUnits } from 'ethers/lib/utils.js';
 
 const ERC20Balances = () => {
   interface DestChain {
@@ -49,12 +49,13 @@ const ERC20Balances = () => {
   const { chain } = useNetwork();
 
   const availableChains = [
-    { chainName: 'ethereum-2', chainId: 5, distributionContractAddr: 'YOUR_DEPLOYED_CONTRACT_ADDRESS' },
-    { chainName: 'Polygon', chainId: 80001, distributionContractAddr: 'YOUR_DEPLOYED_CONTRACT_ADDRESS' },
+    { chainName: 'ethereum-2', chainId: 5, distributionContractAddr: '0x1698f20D6597A48df6E4571a69C58eE741B29ed1' },
+    { chainName: 'Polygon', chainId: 80001, distributionContractAddr: '0xB6DE251e07D116EeDaF3Bf68E805C72DA23B62cc' },
     { chainName: 'Avalanche', chainId: 43114, distributionContractAddr: 'YOUR_DEPLOYED_CONTRACT_ADDRESS' }, //AVALANCHE NOT SUPPORTED!
   ];
 
   // const [queriedChain, setQueriedChain] = useState({ chainName: '', chainId: chain?.id });
+  const [sourceChainContractAddr, setSourceChainContractAddr] = useState('');
   const [selectedDestChain, setSelectedDestChain] = useState<DestChain[]>([]);
   const [receiverAddrs, setReceiverAddrs] = useState<string[]>([]);
   const [selectedToken, setSelectedToken] = useState<SelectedToken[]>([]);
@@ -62,7 +63,6 @@ const ERC20Balances = () => {
   const [submittedDestChain, setSubmittedDestChain] = useState<DestChain[]>([]);
   const [submittedToken, setSubmittedToken] = useState<SelectedToken[]>([]);
   const [submittedReceiverAddrs, setSubmittedReceiverAddrs] = useState<string[]>([]);
-  const [sourceChainContractAddr, setSourceChainContractAddr] = useState('');
 
   const { data: tokenBalances } = useEvmWalletTokenBalances({
     address: session?.user?.address,
@@ -118,7 +118,7 @@ const ERC20Balances = () => {
     setSubmittedToken(selectedToken.filter((item) => !(item === undefined)));
     setSubmittedReceiverAddrs(receiverAddrs.filter((item) => !(item === '')));
   };
-  /*
+
   const { config } = usePrepareContractWrite({
     address: sourceChainContractAddr,
     abi: abi,
@@ -129,15 +129,16 @@ const ERC20Balances = () => {
       submittedDestChain[0]?.distributionContractAddr,
       submittedReceiverAddrs,
       submittedToken[0]?.tokenSymbol,
-      parseUnits(submittedToken[0]?.transferAmount, 6),
+      // parseUnits(submittedToken[0]?.transferAmount?.toString(), 6),
+      submittedToken[0]?.transferAmount,
     ],
     overrides: {
       value: parseEther('1'),
     },
   });
 
-  const { data: txData, write } = useContractWrite(config);
-  
+  const { data: txData, isSuccess, write } = useContractWrite(config);
+
   const updatePendingTx = (key: number) => {
     setSelectedToken((prevSelectedTokens) => {
       const updatedSelectedTokens = [...prevSelectedTokens];
@@ -153,8 +154,7 @@ const ERC20Balances = () => {
       return updatedSelectedTokens;
     });
   };
-  
-  */
+
   return (
     <>
       <Heading size="lg" marginBottom={6}>
@@ -210,69 +210,76 @@ const ERC20Balances = () => {
                     <Td isNumeric>{getEllipsisTxt(token?.contractAddress.checksum)}</Td>
                     <Td>
                       <VStack>
-                        {/* {selectedToken[key]?.pendingTx ? (
+                        {selectedToken[key]?.pendingTx ? (
                           <Button onClick={() => updatePendingTx(key)}>View Transaction</Button>
                         ) : (
-                          <> */}
-                        <Menu>
-                          {({ isOpen }) => (
-                            <>
-                              <MenuButton isActive={isOpen} as={Button} size="s" rightIcon={<ChevronDownIcon />}>
-                                {selectedDestChain[key]?.chainName == ''
-                                  ? 'Select Chain'
-                                  : selectedDestChain[key]?.chainName}
-                              </MenuButton>
-                              <MenuList>
-                                <MenuItem onClick={() => updateDestChain(key, '', 0, '')}>Clear</MenuItem>
-                                {availableChains.map((availableChain) =>
-                                  availableChain.chainId !== chain?.id ? (
-                                    <MenuItem
-                                      key={availableChain.chainId}
-                                      onClick={() =>
-                                        updateDestChain(
-                                          key,
-                                          availableChain.chainName,
-                                          availableChain.chainId,
-                                          availableChain.distributionContractAddr,
-                                        )
-                                      }
-                                    >
-                                      {availableChain.chainName}
-                                    </MenuItem>
-                                  ) : null,
-                                )}
-                              </MenuList>
-                            </>
-                          )}
-                        </Menu>
-                        <Input
-                          placeholder="Receiving Address(es)"
-                          size="sm"
-                          value={receiverAddrs[key] || ''}
-                          onChange={(e) => updateReceiverAddrs(key, e.target.value)}
-                        />
-                        <Input
-                          placeholder="Transfer Amount"
-                          size="sm"
-                          value={selectedToken[key]?.transferAmount || ''}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            if (key !== undefined && token?.symbol && token?.contractAddress) {
-                              updateTransferAmount(
-                                key,
-                                token.symbol,
-                                token.contractAddress.checksum,
-                                parseFloat(value),
-                                false,
-                              );
-                            }
-                          }}
-                        />
-                        <Button isDisabled={token?.symbol != 'aUSDC'} onClick={() => console.log('send erc20 token1')}>
-                          Transfer
-                        </Button>
-                        {/* </>
-                        )} */}
+                          <>
+                            <Menu>
+                              {({ isOpen }) => (
+                                <>
+                                  <MenuButton isActive={isOpen} as={Button} size="s" rightIcon={<ChevronDownIcon />}>
+                                    {selectedDestChain[key]?.chainName == ''
+                                      ? 'Select Chain'
+                                      : selectedDestChain[key]?.chainName}
+                                  </MenuButton>
+                                  <MenuList>
+                                    <MenuItem onClick={() => updateDestChain(key, '', 0, '')}>Clear</MenuItem>
+                                    {availableChains.map((availableChain) =>
+                                      availableChain.chainId !== chain?.id ? (
+                                        <MenuItem
+                                          key={availableChain.chainId}
+                                          onClick={() =>
+                                            updateDestChain(
+                                              key,
+                                              availableChain.chainName,
+                                              availableChain.chainId,
+                                              availableChain.distributionContractAddr,
+                                            )
+                                          }
+                                        >
+                                          {availableChain.chainName}
+                                        </MenuItem>
+                                      ) : null,
+                                    )}
+                                  </MenuList>
+                                </>
+                              )}
+                            </Menu>
+                            <Input
+                              placeholder="Receiving Address(es)"
+                              size="sm"
+                              value={receiverAddrs[key] || ''}
+                              onChange={(e) => updateReceiverAddrs(key, e.target.value)}
+                            />
+                            <Input
+                              placeholder="Transfer Amount"
+                              size="sm"
+                              value={selectedToken[key]?.transferAmount || ''}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (key !== undefined && token?.symbol && token?.contractAddress) {
+                                  updateTransferAmount(
+                                    key,
+                                    token.symbol,
+                                    token.contractAddress.checksum,
+                                    parseFloat(value),
+                                    false,
+                                  );
+                                }
+                              }}
+                            />
+                            <Button
+                              isDisabled={token?.symbol != 'aUSDC'}
+                              onClick={() => {
+                                write?.();
+                                console.log(isSuccess, 'data');
+                                // updatePendingTx(key);
+                              }}
+                            >
+                              Transfer
+                            </Button>
+                          </>
+                        )}
                       </VStack>
                     </Td>
                   </Tr>
