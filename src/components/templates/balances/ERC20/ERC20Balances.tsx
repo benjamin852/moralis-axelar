@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   TableContainer,
   Table,
@@ -54,7 +54,6 @@ const ERC20Balances = () => {
     { chainName: 'Avalanche', chainId: 43114, distributionContractAddr: 'YOUR_DEPLOYED_CONTRACT_ADDRESS' }, //AVALANCHE NOT SUPPORTED!
   ];
 
-  // const [queriedChain, setQueriedChain] = useState({ chainName: '', chainId: chain?.id });
   const [sourceChainContractAddr, setSourceChainContractAddr] = useState('');
   const [selectedDestChain, setSelectedDestChain] = useState<DestChain[]>([]);
   const [receiverAddrs, setReceiverAddrs] = useState<string[]>([]);
@@ -64,9 +63,10 @@ const ERC20Balances = () => {
   const [submittedToken, setSubmittedToken] = useState<SelectedToken[]>([]);
   const [submittedReceiverAddrs, setSubmittedReceiverAddrs] = useState<string[]>([]);
 
+  const keyRef = useRef<number | null>(null);
+
   const { data: tokenBalances } = useEvmWalletTokenBalances({
     address: session?.user?.address,
-    // chain: queriedChain.chainId == 0 ? chain?.id : queriedChain.chainId,
     chain: chain?.id,
   });
 
@@ -80,17 +80,30 @@ const ERC20Balances = () => {
   }, [tokenBalances]);
 
   useEffect(() => {
-    // if (chain) setQueriedChain({ ...queriedChain, chainName: chain.name }); I THINK THIS IS BUG
     if (chain?.id === 5) setSourceChainContractAddr(availableChains[0].distributionContractAddr);
     if (chain?.id === 80001) setSourceChainContractAddr(availableChains[1].distributionContractAddr);
     if (chain?.id === 43114) setSourceChainContractAddr(availableChains[2].distributionContractAddr);
   }, [chain]);
 
+  useEffect(() => {
+    const filteredDestChain = selectedDestChain.filter((item) => !(item.chainName === '' && item.chainId === 0));
+    setSubmittedDestChain(filteredDestChain);
+
+    const filteredTokens = selectedToken.filter((item) => !(item === undefined));
+    setSubmittedToken(filteredTokens);
+
+    const filteredReceiverAddrs = receiverAddrs
+      .filter((item) => !(item === ''))
+      .flatMap((item) => item.split(','))
+      .map((address) => address.trim());
+
+    setSubmittedReceiverAddrs(filteredReceiverAddrs);
+  }, [selectedDestChain, selectedToken, receiverAddrs]);
+
   const updateReceiverAddrs = (index: number, value: string) => {
     const updatedList = [...receiverAddrs];
     updatedList[index] = value;
     setReceiverAddrs(updatedList);
-    parseForSubmission();
   };
 
   const updateTransferAmount = (
@@ -103,20 +116,12 @@ const ERC20Balances = () => {
     const updatedList = [...selectedToken];
     updatedList[index] = { tokenSymbol, tokenAddr, transferAmount, pendingTx };
     setSelectedToken(updatedList);
-    parseForSubmission();
   };
 
   const updateDestChain = (index: number, chainName: string, chainId: number, distributionContractAddr: string) => {
     const updatedList = [...selectedDestChain];
     updatedList[index] = { chainName, chainId, distributionContractAddr };
     setSelectedDestChain(updatedList);
-    parseForSubmission();
-  };
-
-  const parseForSubmission = () => {
-    setSubmittedDestChain(selectedDestChain.filter((item) => !(item.chainName === '' && item.chainId === 0)));
-    setSubmittedToken(selectedToken.filter((item) => !(item === undefined)));
-    setSubmittedReceiverAddrs(receiverAddrs.filter((item) => !(item === '')));
   };
 
   const { config } = usePrepareContractWrite({
@@ -129,8 +134,7 @@ const ERC20Balances = () => {
       submittedDestChain[0]?.distributionContractAddr,
       submittedReceiverAddrs,
       submittedToken[0]?.tokenSymbol,
-      // parseUnits(submittedToken[0]?.transferAmount?.toString(), 6),
-      submittedToken[0]?.transferAmount,
+      parseUnits((submittedToken[0]?.transferAmount || 0).toString(), 6).toString(),
     ],
     overrides: {
       value: parseEther('1'),
@@ -139,20 +143,36 @@ const ERC20Balances = () => {
 
   const { data: txData, isSuccess, write } = useContractWrite(config);
 
-  const updatePendingTx = (key: number) => {
-    setSelectedToken((prevSelectedTokens) => {
-      const updatedSelectedTokens = [...prevSelectedTokens];
-      const { pendingTx } = updatedSelectedTokens[key];
-      if (pendingTx) {
-        const url = `https://testnet.axelarscan.io/gmp/${txData?.hash}`;
-        if (url) window.open(url, '_blank');
-      }
-      updatedSelectedTokens[key] = {
-        ...updatedSelectedTokens[key],
-        pendingTx: !pendingTx,
-      };
-      return updatedSelectedTokens;
-    });
+  useEffect(() => {
+    if (isSuccess) {
+      setSelectedToken((prevSelectedTokens) => {
+        const updatedSelectedTokens = [...prevSelectedTokens];
+        const key = keyRef.current !== null ? keyRef.current : undefined;
+        if (key !== undefined) {
+          const { pendingTx } = updatedSelectedTokens[key];
+          if (!pendingTx) {
+            updatedSelectedTokens[key] = {
+              ...updatedSelectedTokens[key],
+              pendingTx: true,
+            };
+          }
+          return updatedSelectedTokens;
+        } else {
+          return prevSelectedTokens;
+        }
+      });
+    }
+  }, [isSuccess]);
+
+  const viewTx = () => {
+    const url = `https://testnet.axelarscan.io/gmp/${txData?.hash}`;
+    if (url) window.open(url, '_blank');
+    setSelectedDestChain([]);
+    setReceiverAddrs([]);
+    setSelectedToken([]);
+    setSubmittedDestChain([]);
+    setSubmittedToken([]);
+    setSubmittedReceiverAddrs([]);
   };
 
   return (
@@ -160,26 +180,6 @@ const ERC20Balances = () => {
       <Heading size="lg" marginBottom={6}>
         ERC20 Balances
       </Heading>
-      {/* <Menu>
-        {({ isOpen }) => (
-          <>
-            <MenuButton isActive={isOpen} as={Button} rightIcon={<ChevronDownIcon />}>
-              {queriedChain?.chainName}
-            </MenuButton>
-            <MenuList>
-              {availableChains.map((chain) => (
-                <MenuItem
-                  key={chain.chainId}
-                  onClick={() => setQueriedChain({ chainName: chain.chainName, chainId: chain.chainId })}
-                >
-                  {chain.chainName}
-                </MenuItem>
-              ))}
-            </MenuList>
-          </>
-        )}
-      </Menu> */}
-
       {tokenBalances?.length ? (
         <Box border="2px" borderColor={hoverTrColor} borderRadius="xl" padding="24px 18px">
           <TableContainer w={'full'}>
@@ -211,7 +211,7 @@ const ERC20Balances = () => {
                     <Td>
                       <VStack>
                         {selectedToken[key]?.pendingTx ? (
-                          <Button onClick={() => updatePendingTx(key)}>View Transaction</Button>
+                          <Button onClick={() => viewTx()}>View Transaction</Button>
                         ) : (
                           <>
                             <Menu>
@@ -272,8 +272,7 @@ const ERC20Balances = () => {
                               isDisabled={token?.symbol != 'aUSDC'}
                               onClick={() => {
                                 write?.();
-                                console.log(isSuccess, 'data');
-                                // updatePendingTx(key);
+                                keyRef.current = key;
                               }}
                             >
                               Transfer
