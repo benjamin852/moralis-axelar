@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   TableContainer,
   Table,
@@ -26,9 +26,9 @@ import { ChevronDownIcon } from '@chakra-ui/icons';
 import { useEvmWalletTokenBalances } from '@moralisweb3/next';
 import { useSession } from 'next-auth/react';
 import { getEllipsisTxt } from 'utils/format';
-import { useNetwork, usePrepareContractWrite, useContractWrite, useWaitForTransaction } from 'wagmi';
+import { useNetwork, usePrepareContractWrite, useContractWrite } from 'wagmi';
 import abi from '../../../../../contract/abi.json';
-import { parseEther } from 'ethers/lib/utils.js';
+import { parseEther, parseUnits } from 'ethers/lib/utils.js';
 
 const ERC20Balances = () => {
   interface DestChain {
@@ -51,10 +51,10 @@ const ERC20Balances = () => {
   const availableChains = [
     { chainName: 'ethereum-2', chainId: 5, distributionContractAddr: '0x1698f20D6597A48df6E4571a69C58eE741B29ed1' },
     { chainName: 'Polygon', chainId: 80001, distributionContractAddr: '0xB6DE251e07D116EeDaF3Bf68E805C72DA23B62cc' },
-    { chainName: 'Avalanche', chainId: 43114, distributionContractAddr: '0x8057746C51Ce81e7271d61e289A17DA2bf5389cB' },
+    { chainName: 'Avalanche', chainId: 43114, distributionContractAddr: 'YOUR_DEPLOYED_CONTRACT_ADDRESS' }, //AVALANCHE NOT SUPPORTED!
   ];
 
-  const [queriedChain, setQueriedChain] = useState({ chainName: '', chainId: chain?.id });
+  const [sourceChainContractAddr, setSourceChainContractAddr] = useState('');
   const [selectedDestChain, setSelectedDestChain] = useState<DestChain[]>([]);
   const [receiverAddrs, setReceiverAddrs] = useState<string[]>([]);
   const [selectedToken, setSelectedToken] = useState<SelectedToken[]>([]);
@@ -62,11 +62,12 @@ const ERC20Balances = () => {
   const [submittedDestChain, setSubmittedDestChain] = useState<DestChain[]>([]);
   const [submittedToken, setSubmittedToken] = useState<SelectedToken[]>([]);
   const [submittedReceiverAddrs, setSubmittedReceiverAddrs] = useState<string[]>([]);
-  const [sourceChainContractAddr, setSourceChainContractAddr] = useState('');
+
+  const keyRef = useRef<number | null>(null);
 
   const { data: tokenBalances } = useEvmWalletTokenBalances({
     address: session?.user?.address,
-    chain: queriedChain.chainId == 0 ? chain?.id : queriedChain.chainId,
+    chain: chain?.id,
   });
 
   useEffect(() => {
@@ -79,17 +80,30 @@ const ERC20Balances = () => {
   }, [tokenBalances]);
 
   useEffect(() => {
-    if (chain) setQueriedChain({ ...queriedChain, chainName: chain.name });
     if (chain?.id === 5) setSourceChainContractAddr(availableChains[0].distributionContractAddr);
     if (chain?.id === 80001) setSourceChainContractAddr(availableChains[1].distributionContractAddr);
     if (chain?.id === 43114) setSourceChainContractAddr(availableChains[2].distributionContractAddr);
   }, [chain]);
 
+  useEffect(() => {
+    const filteredDestChain = selectedDestChain.filter((item) => !(item.chainName === '' && item.chainId === 0));
+    setSubmittedDestChain(filteredDestChain);
+
+    const filteredTokens = selectedToken.filter((item) => !(item === undefined));
+    setSubmittedToken(filteredTokens);
+
+    const filteredReceiverAddrs = receiverAddrs
+      .filter((item) => !(item === ''))
+      .flatMap((item) => item.split(','))
+      .map((address) => address.trim());
+
+    setSubmittedReceiverAddrs(filteredReceiverAddrs);
+  }, [selectedDestChain, selectedToken, receiverAddrs]);
+
   const updateReceiverAddrs = (index: number, value: string) => {
     const updatedList = [...receiverAddrs];
     updatedList[index] = value;
     setReceiverAddrs(updatedList);
-    parseForSubmission();
   };
 
   const updateTransferAmount = (
@@ -102,36 +116,12 @@ const ERC20Balances = () => {
     const updatedList = [...selectedToken];
     updatedList[index] = { tokenSymbol, tokenAddr, transferAmount, pendingTx };
     setSelectedToken(updatedList);
-    parseForSubmission();
   };
 
   const updateDestChain = (index: number, chainName: string, chainId: number, distributionContractAddr: string) => {
     const updatedList = [...selectedDestChain];
     updatedList[index] = { chainName, chainId, distributionContractAddr };
     setSelectedDestChain(updatedList);
-    parseForSubmission();
-  };
-
-  const updatePendingTx = (key: number) => {
-    setSelectedToken((prevSelectedTokens) => {
-      const updatedSelectedTokens = [...prevSelectedTokens];
-      const { pendingTx } = updatedSelectedTokens[key];
-      if (pendingTx) {
-        const url = `https://testnet.axelarscan.io/gmp/${txData?.hash}`;
-        if (url) window.open(url, '_blank');
-      }
-      updatedSelectedTokens[key] = {
-        ...updatedSelectedTokens[key],
-        pendingTx: !pendingTx,
-      };
-      return updatedSelectedTokens;
-    });
-  };
-
-  const parseForSubmission = () => {
-    setSubmittedDestChain(selectedDestChain.filter((item) => !(item.chainName === '' && item.chainId === 0)));
-    setSubmittedToken(selectedToken.filter((item) => !(item === undefined)));
-    setSubmittedReceiverAddrs(receiverAddrs.filter((item) => !(item === '')));
   };
 
   const { config } = usePrepareContractWrite({
@@ -144,40 +134,52 @@ const ERC20Balances = () => {
       submittedDestChain[0]?.distributionContractAddr,
       submittedReceiverAddrs,
       submittedToken[0]?.tokenSymbol,
-      submittedToken[0]?.transferAmount,
+      parseUnits((submittedToken[0]?.transferAmount || 0).toString(), 6).toString(),
     ],
     overrides: {
       value: parseEther('1'),
     },
-    enabled: true,
   });
 
-  const { data: txData, write } = useContractWrite(config);
+  const { data: txData, isSuccess, write } = useContractWrite(config);
+
+  useEffect(() => {
+    if (isSuccess) {
+      setSelectedToken((prevSelectedTokens) => {
+        const updatedSelectedTokens = [...prevSelectedTokens];
+        const key = keyRef.current !== null ? keyRef.current : undefined;
+        if (key !== undefined) {
+          const { pendingTx } = updatedSelectedTokens[key];
+          if (!pendingTx) {
+            updatedSelectedTokens[key] = {
+              ...updatedSelectedTokens[key],
+              pendingTx: true,
+            };
+          }
+          return updatedSelectedTokens;
+        } else {
+          return prevSelectedTokens;
+        }
+      });
+    }
+  }, [isSuccess]);
+
+  const viewTx = () => {
+    const url = `https://testnet.axelarscan.io/gmp/${txData?.hash}`;
+    if (url) window.open(url, '_blank');
+    setSelectedDestChain([]);
+    setReceiverAddrs([]);
+    setSelectedToken([]);
+    setSubmittedDestChain([]);
+    setSubmittedToken([]);
+    setSubmittedReceiverAddrs([]);
+  };
 
   return (
     <>
       <Heading size="lg" marginBottom={6}>
         ERC20 Balances
       </Heading>
-      <Menu>
-        {({ isOpen }) => (
-          <>
-            <MenuButton isActive={isOpen} as={Button} rightIcon={<ChevronDownIcon />}>
-              {queriedChain?.chainName}
-            </MenuButton>
-            <MenuList>
-              {availableChains.map((chain) => (
-                <MenuItem
-                  key={chain.chainId}
-                  onClick={() => setQueriedChain({ chainName: chain.chainName, chainId: chain.chainId })}
-                >
-                  {chain.chainName}
-                </MenuItem>
-              ))}
-            </MenuList>
-          </>
-        )}
-      </Menu>
       {tokenBalances?.length ? (
         <Box border="2px" borderColor={hoverTrColor} borderRadius="xl" padding="24px 18px">
           <TableContainer w={'full'}>
@@ -209,7 +211,7 @@ const ERC20Balances = () => {
                     <Td>
                       <VStack>
                         {selectedToken[key]?.pendingTx ? (
-                          <Button onClick={() => updatePendingTx(key)}>View Transaction</Button>
+                          <Button onClick={() => viewTx()}>View Transaction</Button>
                         ) : (
                           <>
                             <Menu>
@@ -267,10 +269,10 @@ const ERC20Balances = () => {
                               }}
                             />
                             <Button
-                              disabled={!write}
+                              isDisabled={token?.symbol != 'aUSDC'}
                               onClick={() => {
                                 write?.();
-                                updatePendingTx(key);
+                                keyRef.current = key;
                               }}
                             >
                               Transfer
