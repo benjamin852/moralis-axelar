@@ -218,7 +218,7 @@ const ERC20Balances = () => {
                               {({ isOpen }) => (
                                 <>
                                   <MenuButton isActive={isOpen} as={Button} size="s" rightIcon={<ChevronDownIcon />}>
-                                    {selectedDestChain[key]?.chainName == ''
+                                    {selectedDestChain[key]?.chainName === ''
                                       ? 'Select Chain'
                                       : selectedDestChain[key]?.chainName}
                                   </MenuButton>
@@ -256,20 +256,19 @@ const ERC20Balances = () => {
                               size="sm"
                               value={selectedToken[key]?.transferAmount || ''}
                               onChange={(e) => {
-                                const value = e.target.value;
                                 if (key !== undefined && token?.symbol && token?.contractAddress) {
                                   updateTransferAmount(
                                     key,
                                     token.symbol,
                                     token.contractAddress.checksum,
-                                    parseFloat(value),
+                                    parseFloat(e.target.value),
                                     false,
                                   );
                                 }
                               }}
                             />
                             <Button
-                              isDisabled={token?.symbol != 'aUSDC'}
+                              isDisabled={token?.symbol !== 'aUSDC'}
                               onClick={() => {
                                 write?.();
                                 keyRef.current = key;
