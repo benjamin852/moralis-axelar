@@ -49,17 +49,12 @@ const ERC20Balances = () => {
   const availableChains = [
     { chainName: 'ethereum-2', chainId: 5, distributionContractAddr: 'YOUR_DEPLOYED_CONTRACT_ADDRESS' },
     { chainName: 'Polygon', chainId: 80001, distributionContractAddr: 'YOUR_DEPLOYED_CONTRACT_ADDRESS' },
-    { chainName: 'Avalanche', chainId: 43114, distributionContractAddr: 'YOUR_DEPLOYED_CONTRACT_ADDRESS' }, //AVALANCHE NOT SUPPORTED!
   ];
 
   const [sourceChainContractAddr, setSourceChainContractAddr] = useState('');
   const [selectedDestChain, setSelectedDestChain] = useState<DestChain[]>([]);
   const [receiverAddrs, setReceiverAddrs] = useState<string[]>([]);
   const [selectedToken, setSelectedToken] = useState<SelectedToken[]>([]);
-
-  const [submittedDestChain, setSubmittedDestChain] = useState<DestChain[]>([]);
-  const [submittedToken, setSubmittedToken] = useState<SelectedToken[]>([]);
-  const [submittedReceiverAddrs, setSubmittedReceiverAddrs] = useState<string[]>([]);
 
   const { data: tokenBalances } = useEvmWalletTokenBalances({
     address: session?.user?.address,
@@ -78,7 +73,6 @@ const ERC20Balances = () => {
   useEffect(() => {
     if (chain?.id === 5) setSourceChainContractAddr(availableChains[0].distributionContractAddr);
     if (chain?.id === 80001) setSourceChainContractAddr(availableChains[1].distributionContractAddr);
-    if (chain?.id === 43114) setSourceChainContractAddr(availableChains[2].distributionContractAddr);
   }, [chain]);
 
   const updateReceiverAddrs = (index: number, value: string) => {
