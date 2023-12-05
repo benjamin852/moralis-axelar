@@ -127,7 +127,7 @@ const ERC20Balances = () => {
   const { config } = usePrepareContractWrite({
     address: sourceChainContractAddr,
     abi: abi,
-    chainId: selectedDestChain[0]?.chainId,
+    chainId: chain?.id,
     functionName: 'sendToMany(string,string,address[],string,uint256)',
     args: [
       submittedDestChain[0]?.chainName,
