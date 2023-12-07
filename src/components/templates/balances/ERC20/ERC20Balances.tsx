@@ -49,9 +49,8 @@ const ERC20Balances = () => {
   const { chain } = useNetwork();
 
   const availableChains = [
-    { chainName: 'ethereum-2', chainId: 5, distributionContractAddr: '0x1698f20D6597A48df6E4571a69C58eE741B29ed1' },
-    { chainName: 'Polygon', chainId: 80001, distributionContractAddr: '0xB6DE251e07D116EeDaF3Bf68E805C72DA23B62cc' },
-    { chainName: 'Avalanche', chainId: 43114, distributionContractAddr: 'YOUR_DEPLOYED_CONTRACT_ADDRESS' }, //AVALANCHE NOT SUPPORTED!
+    { chainName: 'ethereum-2', chainId: 5, distributionContractAddr: '0x69644bbdb828fc3e5b4FF342DA79D27F21431099' },
+    { chainName: 'Polygon', chainId: 80001, distributionContractAddr: '0x423F37209e3e2F161F9Bdadc6fFD7073fA8d2a59' },
   ];
 
   const [sourceChainContractAddr, setSourceChainContractAddr] = useState('');
